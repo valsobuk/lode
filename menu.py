@@ -183,13 +183,9 @@ class Menu:
         clock = pygame.time.Clock()
         
         # Button positions
-        start_button = pygame.Rect(self.width // 2 - 140, self.height - 140, 280, 70)
-        mode1_button = pygame.Rect(self.width // 2 - 220, self.height // 2 - 10, 200, 100)
-        mode2_button = pygame.Rect(self.width // 2 + 20, self.height // 2 - 10, 200, 100)
+        start_button = pygame.Rect(self.width // 2 - 140, self.height // 2 - 35, 280, 70)
         
         start_hover = False
-        mode1_hover = False
-        mode2_hover = False
         
         while run:
             clock.tick(60)
@@ -198,8 +194,6 @@ class Menu:
             
             # Check hover states
             start_hover = start_button.collidepoint(mouse_pos)
-            mode1_hover = mode1_button.collidepoint(mouse_pos)
-            mode2_hover = mode2_button.collidepoint(mouse_pos)
             
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -208,10 +202,6 @@ class Menu:
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     if start_button.collidepoint(mouse_pos):
                         return self.selected_mode, True  # Return mode and start flag
-                    elif mode1_button.collidepoint(mouse_pos):
-                        self.selected_mode = 0
-                    elif mode2_button.collidepoint(mouse_pos):
-                        self.selected_mode = 1
             
             # Draw everything
             self.draw_gradient_background(self.win)
@@ -239,22 +229,6 @@ class Menu:
             
             # Title
             self.win.blit(title_surf, title_rect)
-            
-            # Subtitle
-            subtitle_y = 180
-            self.draw_label(self.win, "Select Game Mode", (self.width // 2 - 150, subtitle_y), size=32)
-            
-            # Decorative line
-            line_y = subtitle_y + 50
-            pygame.draw.line(self.win, COLOR_BUTTON, 
-                           (self.width // 2 - 150, line_y),
-                           (self.width // 2 + 150, line_y), 3)
-            
-            # Mode buttons
-            self.draw_mode_button(self.win, "MODE 1", mode1_button, 
-                                selected=(self.selected_mode == 0), hover=mode1_hover)
-            self.draw_mode_button(self.win, "MODE 2", mode2_button, 
-                                selected=(self.selected_mode == 1), hover=mode2_hover)
             
             # Start button with pulse
             pulse = start_hover

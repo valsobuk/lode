@@ -17,6 +17,7 @@ class BattleshipsGame:
         self.setup_complete = False
         self.game_over = False
         self.winner = None
+        self.current_turn = 0  # 0 = player 0, 1 = player 1
         
         # Auto-place ships for now (can be changed to manual placement)
         if not self.setup_complete:
