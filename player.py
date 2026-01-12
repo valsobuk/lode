@@ -157,16 +157,24 @@ class BattleshipsGame:
     
     def draw(self, win, offset_x, offset_y, show_ships=True):
         """Draw the board"""
-        # Draw grid
+        # Colors matching menu style
+        COLOR_GRID = (59, 130, 246)      # Accent blue
+        COLOR_SHIP = (99, 102, 241)      # Indigo
+        COLOR_HIT = (239, 68, 68)        # Red
+        COLOR_MISS = (148, 163, 184)     # Slate
+        COLOR_PANEL = (30, 41, 59)
+        COLOR_TEXT_BRIGHT = (255, 255, 255)
+        
+        # Draw grid with modern colors
         for i in range(self.BOARD_SIZE + 1):
             # Vertical lines
-            pygame.draw.line(win, (0, 0, 0), 
+            pygame.draw.line(win, COLOR_GRID, 
                            (offset_x + i * self.CELL_SIZE, offset_y),
-                           (offset_x + i * self.CELL_SIZE, offset_y + self.BOARD_SIZE * self.CELL_SIZE), 1)
+                           (offset_x + i * self.CELL_SIZE, offset_y + self.BOARD_SIZE * self.CELL_SIZE), 2)
             # Horizontal lines
-            pygame.draw.line(win, (0, 0, 0),
+            pygame.draw.line(win, COLOR_GRID,
                            (offset_x, offset_y + i * self.CELL_SIZE),
-                           (offset_x + self.BOARD_SIZE * self.CELL_SIZE, offset_y + i * self.CELL_SIZE), 1)
+                           (offset_x + self.BOARD_SIZE * self.CELL_SIZE, offset_y + i * self.CELL_SIZE), 2)
         
         # Draw cells
         for y in range(self.BOARD_SIZE):
@@ -176,36 +184,39 @@ class BattleshipsGame:
                 cell_rect = pygame.Rect(cell_x, cell_y, self.CELL_SIZE - 2, self.CELL_SIZE - 2)
                 
                 if self.own_board[y][x] == 1 and show_ships:
-                    # Ship (only show on own board)
-                    pygame.draw.rect(win, (100, 100, 200), cell_rect)
+                    # Ship with glow effect
+                    for i in range(2):
+                        glow_rect = pygame.Rect(
+                            cell_rect.x - i, cell_rect.y - i,
+                            cell_rect.width + i * 2, cell_rect.height + i * 2
+                        )
+                        glow_color = tuple(min(255, c + (2-i) * 20) for c in COLOR_SHIP[:3])
+                        pygame.draw.rect(win, glow_color, glow_rect, border_radius=3)
+                    pygame.draw.rect(win, COLOR_SHIP, cell_rect, border_radius=3)
+                    # Inner highlight
+                    highlight = pygame.Rect(cell_rect.x + 2, cell_rect.y + 2, 
+                                          cell_rect.width - 4, cell_rect.height // 2)
+                    highlight_color = tuple(min(255, c + 30) for c in COLOR_SHIP[:3])
+                    pygame.draw.rect(win, highlight_color, highlight, border_radius=2)
                 elif self.own_board[y][x] == 2:
-                    # Hit
-                    pygame.draw.rect(win, (200, 0, 0), cell_rect)
-                    pygame.draw.circle(win, (255, 255, 255), 
+                    # Hit with glow
+                    for i in range(2):
+                        glow_rect = pygame.Rect(
+                            cell_rect.x - i, cell_rect.y - i,
+                            cell_rect.width + i * 2, cell_rect.height + i * 2
+                        )
+                        glow_color = tuple(min(255, c + (2-i) * 30) for c in COLOR_HIT[:3])
+                        pygame.draw.rect(win, glow_color, glow_rect, border_radius=4)
+                    pygame.draw.rect(win, COLOR_HIT, cell_rect, border_radius=4)
+                    pygame.draw.circle(win, COLOR_TEXT_BRIGHT, 
                                      (cell_x + self.CELL_SIZE // 2, cell_y + self.CELL_SIZE // 2), 
-                                     self.CELL_SIZE // 3)
+                                     self.CELL_SIZE // 4)
                 elif self.own_board[y][x] == -1:
                     # Miss
-                    pygame.draw.circle(win, (150, 150, 150),
+                    pygame.draw.rect(win, COLOR_PANEL, cell_rect, border_radius=4)
+                    pygame.draw.circle(win, COLOR_MISS,
                                      (cell_x + self.CELL_SIZE // 2, cell_y + self.CELL_SIZE // 2),
-                                     self.CELL_SIZE // 4)
+                                     self.CELL_SIZE // 5)
         
-        # Draw opponent board hits/misses
-        if not show_ships:
-            for y in range(self.BOARD_SIZE):
-                for x in range(self.BOARD_SIZE):
-                    cell_x = offset_x + x * self.CELL_SIZE + 1
-                    cell_y = offset_y + y * self.CELL_SIZE + 1
-                    
-                    if self.opponent_board[y][x] == 2:
-                        # Hit
-                        pygame.draw.rect(win, (200, 0, 0), 
-                                       pygame.Rect(cell_x, cell_y, self.CELL_SIZE - 2, self.CELL_SIZE - 2))
-                        pygame.draw.circle(win, (255, 255, 255),
-                                         (cell_x + self.CELL_SIZE // 2, cell_y + self.CELL_SIZE // 2),
-                                         self.CELL_SIZE // 3)
-                    elif self.opponent_board[y][x] == -1:
-                        # Miss
-                        pygame.draw.circle(win, (150, 150, 150),
-                                         (cell_x + self.CELL_SIZE // 2, cell_y + self.CELL_SIZE // 2),
-                                         self.CELL_SIZE // 4)
+        # Draw opponent board hits/misses (handled in client.py now)
+        # This method is mainly for own board display
