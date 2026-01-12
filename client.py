@@ -22,13 +22,15 @@ COLOR_HOVER = (94, 234, 212)     # Cyan for hover
 FONT = None
 FONT_LARGE = None
 FONT_NORMAL = None
+FONT_VICTORY = None
 
 def init_font():
-    global FONT, FONT_LARGE, FONT_NORMAL
+    global FONT, FONT_LARGE, FONT_NORMAL, FONT_VICTORY
     pygame.font.init()
     FONT = pygame.font.Font(None, 24)
     FONT_LARGE = pygame.font.Font(None, 36)
     FONT_NORMAL = pygame.font.Font(None, 28)
+    FONT_VICTORY = pygame.font.Font(None, 56)
 
 def draw_gradient_background(surface, width, height):
     """Draw gradient background"""
@@ -54,7 +56,7 @@ def draw_label(surface, text, pos, size=24, color=COLOR_TEXT, shadow=True):
     text_surf = font.render(text, True, color)
     surface.blit(text_surf, pos)
 
-def redrawWindow(win, player, opponent, hover_cell=None):
+def redrawWindow(win, player, opponent, hover_cell=None, game_time=0):
     draw_gradient_background(win, width, height)
     
     # Panels with rounded corners
@@ -177,36 +179,86 @@ def redrawWindow(win, player, opponent, hover_cell=None):
     
     # Game status with glow
     if player.game_over or (opponent and opponent.game_over):
-        if player.game_over and player.winner != player.player_id:
-            status_text = "You Lose!"
-            status_color = COLOR_HIT
-        elif opponent and opponent.game_over and opponent.winner != player.player_id:
-            status_text = "You Win!"
-            status_color = COLOR_HOVER
-        elif player.game_over:
-            status_text = "You Win!"
-            status_color = COLOR_HOVER
+        # Determine winner and loser
+        if player.game_over:
+            winner_id = player.winner
+            loser_id = player.player_id
+        elif opponent and opponent.game_over:
+            winner_id = opponent.winner
+            loser_id = opponent.player_id
         else:
-            status_text = "You Lose!"
-            status_color = COLOR_HIT
+            winner_id = None
+            loser_id = None
         
-        # Glow effect
-        for i in range(5):
-            glow_surf = FONT_LARGE.render(status_text, True, tuple(min(255, c + (5-i) * 10) for c in status_color[:3]))
-            glow_rect = glow_surf.get_rect(center=(width // 2 + i, height - 40 + i))
-            win.blit(glow_surf, glow_rect)
-        
-        # Shadow
-        shadow_surf = FONT_LARGE.render(status_text, True, (0, 0, 0))
-        shadow_rect = shadow_surf.get_rect(center=(width // 2 + 3, height - 37))
-        win.blit(shadow_surf, shadow_rect)
-        
-        # Text
-        text_surf = FONT_LARGE.render(status_text, True, status_color)
-        text_rect = text_surf.get_rect(center=(width // 2, height - 40))
-        win.blit(text_surf, text_rect)
+        if winner_id is not None:
+            # Determine if current player won or lost
+            player_won = (winner_id == player.player_id)
+            
+            if player_won:
+                status_text = f"Vyhral si"
+                status_color = COLOR_HOVER
+                loser_text = f"Hráč {loser_id + 1} prehral"
+            else:
+                status_text = f"Druhý hráč vyhral!"
+                status_color = COLOR_HOVER
+                loser_text = f"Prehral si"
+            
+            # Center positions
+            center_y_winner = height // 2 - 30
+            center_y_loser = height // 2 + 30
+            
+            # Winner text with glow
+            for i in range(8):
+                glow_surf = FONT_VICTORY.render(status_text, True, tuple(min(255, c + (8-i) * 8) for c in status_color[:3]))
+                glow_rect = glow_surf.get_rect(center=(width // 2 + i, center_y_winner + i))
+                win.blit(glow_surf, glow_rect)
+            
+            # Winner shadow
+            shadow_surf = FONT_VICTORY.render(status_text, True, (0, 0, 0))
+            shadow_rect = shadow_surf.get_rect(center=(width // 2 + 4, center_y_winner + 4))
+            win.blit(shadow_surf, shadow_rect)
+            
+            # Winner text
+            text_surf = FONT_VICTORY.render(status_text, True, status_color)
+            text_rect = text_surf.get_rect(center=(width // 2, center_y_winner))
+            win.blit(text_surf, text_rect)
+            
+            # Particles around winner text
+            draw_victory_particles(win, width // 2, center_y_winner, game_time, status_color)
+            
+            # Loser text
+            loser_color = COLOR_HIT if player_won else COLOR_MISS
+            loser_surf = FONT_LARGE.render(loser_text, True, loser_color)
+            loser_rect = loser_surf.get_rect(center=(width // 2, center_y_loser))
+            shadow_loser = FONT_LARGE.render(loser_text, True, (0, 0, 0))
+            win.blit(shadow_loser, (loser_rect.x + 3, loser_rect.y + 3))
+            win.blit(loser_surf, loser_rect)
+            
+            # Particles around loser text (smaller)
+            for i in range(15):
+                angle = (game_time * 0.015 + i * (2 * math.pi / 15)) % (2 * math.pi)
+                distance = 60 + math.sin(game_time * 0.08 + i) * 15
+                x = width // 2 + math.cos(angle) * distance
+                y = center_y_loser + math.sin(angle) * distance
+                size = 2 + math.sin(game_time * 0.12 + i) * 1.5
+                brightness = int(120 + math.sin(game_time * 0.18 + i) * 80)
+                particle_color = tuple(min(255, c * brightness // 200) for c in loser_color[:3])
+                pygame.draw.circle(win, particle_color, (int(x), int(y)), int(size))
     
     pygame.display.update()
+
+def draw_victory_particles(surface, center_x, center_y, time, color):
+    """Draw particles around victory text"""
+    particle_count = 30
+    for i in range(particle_count):
+        angle = (time * 0.02 + i * (2 * math.pi / particle_count)) % (2 * math.pi)
+        distance = 120 + math.sin(time * 0.05 + i) * 30
+        x = center_x + math.cos(angle) * distance
+        y = center_y + math.sin(angle) * distance
+        size = 4 + math.sin(time * 0.1 + i) * 2.5
+        brightness = int(150 + math.sin(time * 0.15 + i) * 105)
+        particle_color = tuple(min(255, c * brightness // 255) for c in color[:3])
+        pygame.draw.circle(surface, particle_color, (int(x), int(y)), int(size))
 
 def get_grid_pos(mouse_pos, offset_x, offset_y):
     """Convert mouse position to grid coordinates"""
@@ -236,6 +288,7 @@ def main():
     clock = pygame.time.Clock()
     init_font()
     hover_cell = None
+    game_time = 0
     
     if p is None:
         print("Failed to connect")
@@ -246,6 +299,7 @@ def main():
     
     while run:
         clock.tick(60)
+        game_time += 1
         
         # Send current state and receive updated self + opponent state
         resp = n.send(p)
@@ -287,7 +341,7 @@ def main():
                         if p.current_turn == p.player_id:
                             p.shoot(grid_x, grid_y)
         
-        redrawWindow(win, p, p2, hover_cell)
+        redrawWindow(win, p, p2, hover_cell, game_time)
 
 if __name__ == "__main__":
     main()

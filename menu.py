@@ -6,6 +6,7 @@ COLOR_BG = (8, 12, 24)           # Darker navy background
 COLOR_BG_GRADIENT = (15, 23, 42)  # Lighter navy
 COLOR_PANEL = (30, 41, 59)
 COLOR_PANEL_GLOW = (59, 130, 246, 30)  # Blue glow
+COLOR_GRID = (59, 130, 246)      # Accent blue
 COLOR_TEXT = (226, 232, 240)
 COLOR_TEXT_BRIGHT = (255, 255, 255)
 COLOR_HOVER = (94, 234, 212)      # Cyan for hover
@@ -167,25 +168,84 @@ class Menu:
         surface.blit(text_surf, text_rect)
     
     def draw_particles(self, surface):
-        """Draw animated particles in background"""
-        particle_count = 15
+        """Draw animated particles in background with various directions"""
+        particle_count = 50
         for i in range(particle_count):
-            x = (self.time * 8 + i * 60) % (self.width + 100) - 50
-            y = self.height // 2 + math.sin(self.time * 0.05 + i) * 80
-            size = 2 + math.sin(self.time * 0.1 + i) * 1.5
-            # Vary brightness
-            brightness = int(100 + math.sin(self.time * 0.15 + i) * 100)
-            color = tuple(min(255, c * brightness // 200) for c in COLOR_BUTTON[:3])
+            # Different movement patterns for variety
+            pattern = i % 4
+            
+            if pattern == 0:  # Horizontal moving
+                x = (self.time * 4 + i * 20) % (self.width + 100) - 50
+                y = self.height // 2 + math.sin(self.time * 0.05 + i * 0.2) * 100
+            elif pattern == 1:  # Vertical moving
+                x = self.width // 2 + math.cos(self.time * 0.04 + i * 0.3) * 200
+                y = (self.time * 3 + i * 15) % (self.height + 80) - 40
+            elif pattern == 2:  # Diagonal
+                angle = (self.time * 0.02 + i * 0.4) % (2 * math.pi)
+                base_x = self.width // 2
+                base_y = self.height // 2
+                radius = (self.time * 2 + i * 8) % 300
+                x = base_x + math.cos(angle) * radius
+                y = base_y + math.sin(angle) * radius
+            else:  # Circular/spiral
+                angle = (self.time * 0.03 + i * 0.5) % (2 * math.pi)
+                spiral_radius = 50 + (i % 10) * 25 + math.sin(self.time * 0.08) * 30
+                x = self.width // 2 + math.cos(angle) * spiral_radius
+                y = self.height // 2 + math.sin(angle) * spiral_radius
+            
+            # Ensure particles stay on screen
+            x = max(0, min(self.width, x))
+            y = max(0, min(self.height, y))
+            
+            size = max(1.5, 2 + math.sin(self.time * 0.15 + i * 0.5) * 2.5)
+            brightness = max(60, min(255, int(100 + math.sin(self.time * 0.2 + i * 0.6) * 100)))
+            color = tuple(min(255, max(0, c * brightness // 255)) for c in COLOR_BUTTON[:3])
             pygame.draw.circle(surface, color, (int(x), int(y)), int(size))
+    
+    def draw_exit_button(self, surface, text, rect, hover=False):
+        """Draw exit button with red accent"""
+        if hover:
+            for i in range(4):
+                glow_rect = pygame.Rect(
+                    rect.x - i * 2, rect.y - i * 2,
+                    rect.width + i * 4, rect.height + i * 4
+                )
+                light_color = tuple(min(255, c + (4-i) * 12) for c in COLOR_ACCENT[:3])
+                pygame.draw.rect(surface, light_color, glow_rect, width=1, border_radius=10)
+        
+        color = tuple(min(255, c + 20) for c in COLOR_ACCENT[:3]) if hover else COLOR_ACCENT
+        pygame.draw.rect(surface, color, rect, border_radius=10)
+        
+        highlight = pygame.Rect(rect.x + 2, rect.y + 2, rect.width - 4, rect.height // 2)
+        highlight_color = tuple(min(255, c + 25) for c in color[:3])
+        pygame.draw.rect(surface, highlight_color, highlight, border_radius=8)
+        
+        border_color = COLOR_TEXT_BRIGHT if hover else COLOR_TEXT
+        pygame.draw.rect(surface, border_color, rect, width=2, border_radius=10)
+        
+        text_surf = self.font_normal.render(text, True, COLOR_TEXT_BRIGHT)
+        text_rect = text_surf.get_rect(center=rect.center)
+        shadow_surf = self.font_normal.render(text, True, (0, 0, 0))
+        surface.blit(shadow_surf, (text_rect.x + 2, text_rect.y + 2))
+        surface.blit(text_surf, text_rect)
     
     def run(self):
         run = True
         clock = pygame.time.Clock()
         
-        # Button positions
-        start_button = pygame.Rect(self.width // 2 - 140, self.height // 2 - 35, 280, 70)
+        # Button positions (centered)
+        button_width = 280
+        button_height_start = 65
+        button_height_exit = 55
+        button_spacing = 20
+        total_height = button_height_start + button_spacing + button_height_exit
+        start_y = self.height // 2 - total_height // 2
+        
+        start_button = pygame.Rect(self.width // 2 - button_width // 2, start_y, button_width, button_height_start)
+        exit_button = pygame.Rect(self.width // 2 - button_width // 2, start_y + button_height_start + button_spacing, button_width, button_height_exit)
         
         start_hover = False
+        exit_hover = False
         
         while run:
             clock.tick(60)
@@ -194,6 +254,7 @@ class Menu:
             
             # Check hover states
             start_hover = start_button.collidepoint(mouse_pos)
+            exit_hover = exit_button.collidepoint(mouse_pos)
             
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
@@ -201,7 +262,9 @@ class Menu:
                 
                 if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                     if start_button.collidepoint(mouse_pos):
-                        return self.selected_mode, True  # Return mode and start flag
+                        return self.selected_mode, True
+                    elif exit_button.collidepoint(mouse_pos):
+                        return None, None  # Exit game
             
             # Draw everything
             self.draw_gradient_background(self.win)
@@ -209,22 +272,40 @@ class Menu:
             # Background particles
             self.draw_particles(self.win)
             
+            # Decorative panel behind buttons (centered with buttons)
+            panel_padding = 40
+            panel_width = button_width + panel_padding * 2
+            panel_height = total_height + panel_padding * 2
+            panel_x = self.width // 2 - panel_width // 2
+            panel_y = start_y - panel_padding
+            panel_rect = pygame.Rect(panel_x, panel_y, panel_width, panel_height)
+            for i in range(4):
+                glow_panel = pygame.Rect(
+                    panel_rect.x - i, panel_rect.y - i,
+                    panel_rect.width + i * 2, panel_rect.height + i * 2
+                )
+                glow_color = tuple(min(255, c + (4-i) * 3) for c in COLOR_PANEL[:3])
+                pygame.draw.rect(self.win, glow_color, glow_panel, border_radius=15 + i)
+            
+            pygame.draw.rect(self.win, COLOR_PANEL, panel_rect, border_radius=15)
+            pygame.draw.rect(self.win, COLOR_GRID, panel_rect, width=2, border_radius=15)
+            
             # Title with glow effect
             title_text = "BATTLESHIPS"
             title_surf = self.font_title.render(title_text, True, COLOR_TEXT_BRIGHT)
-            title_rect = title_surf.get_rect(center=(self.width // 2, 120))
+            title_rect = title_surf.get_rect(center=(self.width // 2, 100))
             
             # Title glow
-            for i in range(6):
-                glow_intensity = 30 - i * 4
+            for i in range(8):
+                glow_intensity = 35 - i * 3
                 glow_color = tuple(min(255, c + glow_intensity) for c in COLOR_BUTTON[:3])
                 glow_surf = self.font_title.render(title_text, True, glow_color)
-                glow_rect = glow_surf.get_rect(center=(self.width // 2 + i, 120 + i))
+                glow_rect = glow_surf.get_rect(center=(self.width // 2 + i, 100 + i))
                 self.win.blit(glow_surf, glow_rect)
             
             # Title shadow
             shadow_surf = self.font_title.render(title_text, True, (0, 0, 0))
-            shadow_rect = shadow_surf.get_rect(center=(self.width // 2 + 3, 123))
+            shadow_rect = shadow_surf.get_rect(center=(self.width // 2 + 4, 104))
             self.win.blit(shadow_surf, shadow_rect)
             
             # Title
@@ -232,7 +313,10 @@ class Menu:
             
             # Start button with pulse
             pulse = start_hover
-            self.draw_button(self.win, "START GAME", start_button, hover=start_hover, pulse=pulse)
+            self.draw_button(self.win, "SPUSTIŤ HRU", start_button, hover=start_hover, pulse=pulse)
+            
+            # Exit button
+            self.draw_exit_button(self.win, "UKONČIŤ", exit_button, hover=exit_hover)
             
             pygame.display.update()
         
