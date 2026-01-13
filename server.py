@@ -16,11 +16,62 @@ except socket.error as e:
 
 s.listen(2)
 
-# Get and display the server's IP address
-hostname = socket.gethostname()
-local_ip = socket.gethostbyname(hostname)
+# Get and display the server's IP address (more reliable method)
+def get_local_ip():
+    """Get the local IP address that can be reached from other machines"""
+    try:
+        # Connect to a remote address (doesn't actually connect)
+        # This gets the IP of the interface used for outgoing connections
+        s_test = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s_test.connect(("8.8.8.8", 80))  # Google DNS, just to find our IP
+        ip = s_test.getsockname()[0]
+        s_test.close()
+        return ip
+    except:
+        # Fallback: get all IP addresses
+        import socket as sock
+        hostname = sock.gethostname()
+        try:
+            return sock.gethostbyname(hostname)
+        except:
+            return "127.0.0.1"
+
+# Get all network interfaces (for debugging)
+def get_all_ips():
+    """Get all IP addresses of this machine"""
+    import socket as sock
+    ips = []
+    hostname = sock.gethostname()
+    try:
+        # Get hostname IP
+        host_ip = sock.gethostbyname(hostname)
+        if host_ip not in ips:
+            ips.append(host_ip)
+    except:
+        pass
+    
+    # Try the UDP method
+    try:
+        s_test = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s_test.connect(("8.8.8.8", 80))
+        udp_ip = s_test.getsockname()[0]
+        s_test.close()
+        if udp_ip not in ips:
+            ips.append(udp_ip)
+    except:
+        pass
+    
+    return ips
+
+local_ip = get_local_ip()
+all_ips = get_all_ips()
+
 print(f"Server Started on port {port}")
-print(f"Server IP: {local_ip}")
+print(f"Primary Server IP: {local_ip}")
+if len(all_ips) > 1:
+    print(f"All available IPs: {', '.join(all_ips)}")
+    print("If connection fails, try using one of the other IPs in network.py")
+print("Make sure clients use the correct IP address in network.py")
 print("Waiting for connections...")
 
 # Initialize two battleships games
