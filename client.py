@@ -332,7 +332,12 @@ def main():
     game_time = 0
     
     if p is None:
-        print("Failed to connect")
+        print("\nFailed to connect to server.")
+        print("Press Enter to exit...")
+        try:
+            input()
+        except:
+            pass
         pygame.quit()
         return
     

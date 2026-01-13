@@ -3,8 +3,8 @@ from _thread import *
 from player import BattleshipsGame
 import pickle
 
-# Use a local interface; binding to a non-existent IP on Windows makes listen() fail
-server = "127.0.0.1"
+# Bind to all interfaces (0.0.0.0) to accept connections from any network interface
+server = ""
 port = 5555
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -15,7 +15,13 @@ except socket.error as e:
     raise SystemExit(f"Bind failed: {e}")
 
 s.listen(2)
-print("Waiting for a connection, Server Started")
+
+# Get and display the server's IP address
+hostname = socket.gethostname()
+local_ip = socket.gethostbyname(hostname)
+print(f"Server Started on port {port}")
+print(f"Server IP: {local_ip}")
+print("Waiting for connections...")
 
 # Initialize two battleships games
 players = [BattleshipsGame(0), BattleshipsGame(1)]
